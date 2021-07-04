@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use std::result::Result;
 
 mod interpreter;
+mod token;
 
 #[derive(Clap, Debug)]
 #[clap(name = env!("CARGO_BIN_NAME"),version=env!("CARGO_PKG_VERSION"),author=env!("CARGO_PKG_AUTHORS"))]
@@ -20,6 +21,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     let stdout = io::stdout();
     let mut interpreter = interpreter::Interpreter::new(stdout, code);
     interpreter.run()?;
-    // println!("{}", &code);
+
     Ok(())
 }
