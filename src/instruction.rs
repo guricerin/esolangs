@@ -17,7 +17,7 @@ pub enum Instruction {
     Call(String),
     Jump(String),
     JumpZero(String),
-    JumpNegs(String),
+    JumpNeg(String),
     Return,
     Exit,
     CharOut,

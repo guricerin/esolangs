@@ -1,12 +1,13 @@
 use std::{fs, path::PathBuf};
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::Clap;
 
-use crate::{compiler::Compiler, instruction::Instruction, vm::VM};
+use crate::{compiler::Compiler, vm::VM};
 
 mod compiler;
 mod instruction;
+mod token;
 mod vm;
 
 #[derive(Debug, Clap)]
@@ -20,11 +21,6 @@ fn main() -> Result<()> {
     let opts = Opts::parse();
     let code = fs::read_to_string(opts.src_path)?;
     let insts = Compiler::new(code).compile()?;
-    let insts = vec![
-        Instruction::Push(0x41),
-        Instruction::CharOut,
-        Instruction::Exit,
-    ];
     VM::new(insts).run()?;
 
     Ok(())

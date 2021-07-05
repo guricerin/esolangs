@@ -108,19 +108,19 @@ impl VM {
                     self.call_stack.push(pc);
                     pc = self.resolve_label(&label)?;
                 }
-                Instruction::Jump(name) => {
-                    pc = self.resolve_label(&name)?;
+                Instruction::Jump(label) => {
+                    pc = self.resolve_label(&label)?;
                 }
-                Instruction::JumpZero(name) => {
+                Instruction::JumpZero(label) => {
                     let x = self.pop()?;
                     if x == 0 {
-                        pc = self.resolve_label(&name)?;
+                        pc = self.resolve_label(&label)?;
                     }
                 }
-                Instruction::JumpNegs(name) => {
+                Instruction::JumpNeg(label) => {
                     let x = self.pop()?;
                     if x < 0 {
-                        pc = self.resolve_label(&name)?;
+                        pc = self.resolve_label(&label)?;
                     }
                 }
                 Instruction::Return => match self.call_stack.pop() {
