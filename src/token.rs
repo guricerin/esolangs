@@ -1,7 +1,7 @@
 use anyhow::Result;
 use regex::Regex;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum Token {
     Space,
     Tab,
