@@ -10,7 +10,7 @@ impl Compiler {
         Self { src_code: src_code }
     }
 
-    pub fn compile() -> Result<()> {
+    pub fn compile(&self) -> Result<()> {
         Ok(())
     }
 }
