@@ -134,18 +134,22 @@ impl VM {
                     let x = self.pop()?;
                     let mut writer = BufWriter::new(io::stdout());
                     // ASCIIコードとみなす
-                    writer.write(&[x as u8])?;
+                    let x = x as u8;
+                    writer.write(&[x])?;
+                    writer.flush()?;
                 }
                 Instruction::NumOut => {
                     let x = self.pop()?;
                     let x = x.to_string();
                     let mut writer = BufWriter::new(io::stdout());
                     writer.write(x.as_bytes())?;
+                    writer.flush()?;
                 }
                 Instruction::CharIn => {
                     let mut buf = String::new();
                     io::stdin().read_line(&mut buf)?;
-                    let buf = buf.into_bytes();
+                    let buf = buf.trim_end(); // 末尾の改行を除去
+                    let buf = buf.as_bytes();
 
                     let address = self.pop()?;
                     let n = buf[0] as i64;
@@ -154,6 +158,7 @@ impl VM {
                 Instruction::NumIn => {
                     let mut buf = String::new();
                     io::stdin().read_line(&mut buf)?;
+                    let buf = buf.trim_end(); // 末尾の改行を除去
 
                     let address = self.pop()?;
                     let n = buf.parse()?;
@@ -197,17 +202,5 @@ impl VM {
             .get(label)
             .with_context(|| format!("label is not found. label name: {}", label))?;
         Ok(*pc as usize)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::{instruction::Instruction, vm::VM};
-
-    #[test]
-    fn test1() {
-        let insts = vec![Instruction::Push(1), Instruction::NumOut, Instruction::Exit];
-        let mut vm = VM::new(insts);
-        vm.run().unwrap();
     }
 }
