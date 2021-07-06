@@ -1,0 +1,20 @@
+#[derive(Debug, Clone)]
+pub enum Instruction {
+    Push(i64),
+    Dup,
+    Swap,
+    Rotate,
+    Pop,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    CharIn,
+    CharOut,
+    NumIn,
+    NumOut,
+    Label(i64),
+    JumpNonZero(i64),
+    Dummy,
+}
