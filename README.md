@@ -1,6 +1,6 @@
 # starry-rs
 
-[『Rubyで作る奇妙なプログラミング言語』](http://esolang-book.route477.net/practices.html)に掲載されているesolang、StarryのRust実装  
+[『Rubyで作る奇妙なプログラミング言語』](http://esolang-book.route477.net/)に掲載されているesolang、StarryのRust実装  
 
 ## Usage
 
