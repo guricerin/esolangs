@@ -1,5 +1,4 @@
 use anyhow::Result;
-use regex::internal::Inst;
 
 use crate::instruction::Instruction;
 use crate::token::{self, Token};

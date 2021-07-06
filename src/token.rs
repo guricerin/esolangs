@@ -33,7 +33,8 @@ pub fn tokenize(code: &str) -> Result<Vec<Token>> {
 }
 
 fn bleach(s: &str) -> Result<String> {
-    let regex = Regex::new(r"[^\+\*\.\,\`\'\x20]")?;
+    let pattern = format!("[^{}\x20]", regex::escape("+*.,`'"));
+    let regex = Regex::new(&pattern)?;
     let res = regex.replace_all(s, "");
     Ok(res.to_string())
 }

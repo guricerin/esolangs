@@ -35,10 +35,13 @@ impl VM {
                     self.stack.push(x);
                 }
                 Instruction::Swap => {
-                    let x = self.pop()?;
+                    // |-> x y
+                    // ↓
+                    // |-> y x
                     let y = self.pop()?;
-                    self.stack.push(x);
+                    let x = self.pop()?;
                     self.stack.push(y);
+                    self.stack.push(x);
                 }
                 Instruction::Rotate => {
                     // |-> x y z
@@ -55,28 +58,28 @@ impl VM {
                     let _ = self.pop()?;
                 }
                 Instruction::Add => {
-                    let x = self.pop()?;
                     let y = self.pop()?;
+                    let x = self.pop()?;
                     self.stack.push(x + y);
                 }
                 Instruction::Sub => {
-                    let x = self.pop()?;
                     let y = self.pop()?;
+                    let x = self.pop()?;
                     self.stack.push(x - y);
                 }
                 Instruction::Mul => {
-                    let x = self.pop()?;
                     let y = self.pop()?;
+                    let x = self.pop()?;
                     self.stack.push(x * y);
                 }
                 Instruction::Div => {
-                    let x = self.pop()?;
                     let y = self.pop()?;
+                    let x = self.pop()?;
                     self.stack.push(x / y);
                 }
                 Instruction::Mod => {
-                    let x = self.pop()?;
                     let y = self.pop()?;
+                    let x = self.pop()?;
                     self.stack.push(x % y);
                 }
                 Instruction::NumOut => {
