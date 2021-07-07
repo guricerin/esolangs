@@ -2,7 +2,7 @@ use std::iter::Peekable;
 
 use anyhow::Result;
 
-use crate::ast::{self, Ast, BinOp};
+use crate::ast::*;
 use crate::token::{self, Token};
 
 #[derive(Debug)]
@@ -38,7 +38,8 @@ impl Parser {
 
     pub fn parse(&mut self) -> Result<Ast> {
         let mut tokens = self.tokens.clone().into_iter().peekable();
-        let ast = self.p_additive(&mut tokens)?;
+        // println!("tokens: {:?}", &tokens);
+        let ast = self.p_output(&mut tokens)?;
         match tokens.next() {
             None => Ok(ast),
             Some(tok) => {
@@ -48,7 +49,46 @@ impl Parser {
         }
     }
 
-    fn p_additive<Tokens>(&self, tokens: &mut Peekable<Tokens>) -> Result<Ast>
+    fn p_output<Tokens>(&self, tokens: &mut Peekable<Tokens>) -> Result<Ast>
+    where
+        Tokens: Iterator<Item = Token>,
+    {
+        // ok_or().and_then()だとその中のクロージャでtokensを他のメソッドにわたせない
+        match tokens.peek() {
+            None => return Err(eof!()),
+            _ => (),
+        };
+
+        let tok = tokens.peek().unwrap().clone();
+        match tok {
+            Token::NumOut => {
+                tokens.next();
+                let expr = self.p_expr(tokens)?;
+                let ast = Ast::stmt(Stmt::NumOut, expr);
+                Ok(ast)
+            }
+            Token::CharOut => {
+                tokens.next();
+                let expr = self.p_expr(tokens)?;
+                let ast = Ast::stmt(Stmt::CharOut, expr);
+                Ok(ast)
+            }
+            _ => {
+                let expr = self.p_expr(tokens)?;
+                let ast = Ast::Expr(expr);
+                Ok(ast)
+            }
+        }
+    }
+
+    fn p_expr<Tokens>(&self, tokens: &mut Peekable<Tokens>) -> Result<Expr>
+    where
+        Tokens: Iterator<Item = Token>,
+    {
+        self.p_additive(tokens)
+    }
+
+    fn p_additive<Tokens>(&self, tokens: &mut Peekable<Tokens>) -> Result<Expr>
     where
         Tokens: Iterator<Item = Token>,
     {
@@ -58,14 +98,14 @@ impl Parser {
             match tok {
                 Token::Plus => {
                     tokens.next();
-                    let right = self.p_additive(tokens)?;
-                    let ast = Ast::binop(BinOp::Add, left, right);
+                    let right = self.p_expr(tokens)?;
+                    let ast = Expr::binop(BinOp::Add, left, right);
                     Ok(ast)
                 }
                 Token::Minus => {
                     tokens.next();
-                    let right = self.p_additive(tokens)?;
-                    let ast = Ast::binop(BinOp::Sub, left, right);
+                    let right = self.p_expr(tokens)?;
+                    let ast = Expr::binop(BinOp::Sub, left, right);
                     Ok(ast)
                 }
                 _ => Ok(left),
@@ -76,7 +116,7 @@ impl Parser {
         }
     }
 
-    fn p_multiply<Tokens>(&self, tokens: &mut Peekable<Tokens>) -> Result<Ast>
+    fn p_multiply<Tokens>(&self, tokens: &mut Peekable<Tokens>) -> Result<Expr>
     where
         Tokens: Iterator<Item = Token>,
     {
@@ -87,13 +127,13 @@ impl Parser {
                 Token::Mul => {
                     tokens.next();
                     let right = self.p_multiply(tokens)?;
-                    let ast = Ast::binop(BinOp::Mul, left, right);
+                    let ast = Expr::binop(BinOp::Mul, left, right);
                     Ok(ast)
                 }
                 Token::Div => {
                     tokens.next();
                     let right = self.p_multiply(tokens)?;
-                    let ast = Ast::binop(BinOp::Div, left, right);
+                    let ast = Expr::binop(BinOp::Div, left, right);
                     Ok(ast)
                 }
                 _ => Ok(left),
@@ -104,12 +144,12 @@ impl Parser {
         }
     }
 
-    fn p_number<Tokens>(&self, tokens: &mut Peekable<Tokens>) -> Result<Ast>
+    fn p_number<Tokens>(&self, tokens: &mut Peekable<Tokens>) -> Result<Expr>
     where
         Tokens: Iterator<Item = Token>,
     {
         let int = tokens.peek().ok_or(eof!()).and_then(|tok| match tok {
-            Token::Num(n) => Ok(Ast::Int(*n as i64)),
+            Token::Num(n) => Ok(Expr::Int(*n as i64)),
             _ => {
                 let msg = format!("the token is not number\ntoken: {:?}", tok);
                 Err(anyhow::anyhow!(err_msg(&msg)))
@@ -123,7 +163,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Ast, BinOp};
+    use crate::ast::*;
     use crate::parser;
     use crate::token;
 
@@ -133,7 +173,7 @@ mod tests {
         for (i, n) in numbers.chars().enumerate() {
             let tokens = token::lex(&n.to_string()).unwrap();
             let ast = parser::Parser::new(tokens).parse().unwrap();
-            let expect = Ast::Int(i as i64);
+            let expect = Ast::Expr(Expr::Int(i as i64));
             assert_eq!(expect, ast);
         }
     }
@@ -144,7 +184,8 @@ mod tests {
         let tokens = token::lex(code).unwrap();
         eprintln!("{:?}", &tokens);
         let ast = parser::Parser::new(tokens).parse().unwrap();
-        let expect = Ast::binop(BinOp::Mul, Ast::Int(1), Ast::Int(2));
+        let expect = Expr::binop(BinOp::Mul, Expr::Int(1), Expr::Int(2));
+        let expect = Ast::Expr(expect);
         assert_eq!(expect, ast);
     }
 
@@ -156,7 +197,8 @@ mod tests {
         let ast = parser::Parser::new(tokens).parse();
         eprintln!("{:?}", &ast);
         let ast = ast.unwrap();
-        let expect = Ast::binop(BinOp::Add, Ast::Int(1), Ast::Int(2));
+        let expect = Expr::binop(BinOp::Add, Expr::Int(1), Expr::Int(2));
+        let expect = Ast::Expr(expect);
         assert_eq!(expect, ast);
     }
 
@@ -167,9 +209,10 @@ mod tests {
         eprintln!("{:?}", &tokens);
         let ast = parser::Parser::new(tokens).parse().unwrap();
 
-        let left = Ast::binop(BinOp::Mul, Ast::Int(1), Ast::Int(2));
-        let right = Ast::binop(BinOp::Mul, Ast::Int(3), Ast::Int(4));
-        let expect = Ast::binop(BinOp::Add, left, right);
+        let left = Expr::binop(BinOp::Mul, Expr::Int(1), Expr::Int(2));
+        let right = Expr::binop(BinOp::Mul, Expr::Int(3), Expr::Int(4));
+        let expect = Expr::binop(BinOp::Add, left, right);
+        let expect = Ast::Expr(expect);
         eprintln!("{:?}", &expect);
 
         assert_eq!(expect, ast);
@@ -182,9 +225,26 @@ mod tests {
         eprintln!("{:?}", &tokens);
         let ast = parser::Parser::new(tokens).parse().unwrap();
 
-        let left = Ast::binop(BinOp::Mul, Ast::Int(1), Ast::Int(2));
-        let left = Ast::binop(BinOp::Mul, left, Ast::Int(3));
-        let expect = Ast::binop(BinOp::Mul, left, Ast::Int(4));
+        let expr = Expr::binop(BinOp::Mul, Expr::Int(1), Expr::Int(2));
+        let expr = Expr::binop(BinOp::Mul, expr, Expr::Int(3));
+        let expect = Expr::binop(BinOp::Mul, expr, Expr::Int(4));
+        let expect = Ast::Expr(expect);
+        eprintln!("{:?}", &expect);
+
+        assert_eq!(expect, ast);
+    }
+
+    #[test]
+    fn numout() {
+        let code = "✍①×②＋③×④";
+        let tokens = token::lex(code).unwrap();
+        eprintln!("{:?}", &tokens);
+        let ast = parser::Parser::new(tokens).parse().unwrap();
+
+        let left = Expr::binop(BinOp::Mul, Expr::Int(1), Expr::Int(2));
+        let right = Expr::binop(BinOp::Mul, Expr::Int(3), Expr::Int(4));
+        let expr = Expr::binop(BinOp::Add, left, right);
+        let expect = Ast::stmt(Stmt::NumOut, expr);
         eprintln!("{:?}", &expect);
 
         assert_eq!(expect, ast);

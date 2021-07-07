@@ -1,11 +1,33 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Ast {
-    Int(i64),
-    BinOp { op: BinOp, l: Box<Ast>, r: Box<Ast> },
+    Stmt { stmt: Stmt, expr: Expr },
+    Expr(Expr),
 }
 
 impl Ast {
-    pub fn binop(op: BinOp, l: Ast, r: Ast) -> Self {
+    pub fn stmt(stmt: Stmt, expr: Expr) -> Self {
+        Self::Stmt { stmt, expr }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Stmt {
+    NumOut,
+    CharOut,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Expr {
+    Int(i64),
+    BinOp {
+        op: BinOp,
+        l: Box<Expr>,
+        r: Box<Expr>,
+    },
+}
+
+impl Expr {
+    pub fn binop(op: BinOp, l: Expr, r: Expr) -> Self {
         Self::BinOp {
             op: op,
             l: Box::new(l),

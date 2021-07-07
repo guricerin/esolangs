@@ -18,8 +18,9 @@ struct Opts {
 fn main() -> Result<()> {
     let opts = Opts::parse();
     let code = fs::read_to_string(opts.src_path)?;
-    let res = interpreter::Interpreter::new(&code)?.run()?;
-    println!("Bolic Result: {}", res);
+    let mut interpreter = interpreter::Interpreter::new();
+    interpreter.run(&code)?;
+    println!("\nBolic return code: {}", interpreter.ret_code());
 
     Ok(())
 }
