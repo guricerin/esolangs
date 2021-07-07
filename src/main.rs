@@ -4,6 +4,7 @@ use anyhow::Result;
 use clap::Clap;
 
 mod ast;
+mod interpreter;
 mod parser;
 mod token;
 
@@ -17,10 +18,8 @@ struct Opts {
 fn main() -> Result<()> {
     let opts = Opts::parse();
     let code = fs::read_to_string(opts.src_path)?;
-    let tokens = token::lex(&code)?;
-    println!("tokens: {:?}", &tokens);
-    let ast = parser::Parser::new(tokens).parse()?;
-    println!("ast: {:?}", &ast);
+    let res = interpreter::Interpreter::new(&code)?.run()?;
+    println!("Bolic Result: {}", res);
 
     Ok(())
 }
