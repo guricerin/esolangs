@@ -17,7 +17,7 @@ struct Opts {
 fn main() -> Result<()> {
     let opts = Opts::parse();
     let code = fs::read_to_string(opts.src_path)?;
-    let tokens = token::lex(code)?;
+    let tokens = token::lex(&code)?;
     println!("tokens: {:?}", &tokens);
     let ast = parser::Parser::new(tokens).parse()?;
     println!("ast: {:?}", &ast);

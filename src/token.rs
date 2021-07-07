@@ -1,52 +1,40 @@
-use std::str::Chars;
-
 use anyhow::Result;
 use once_cell::sync::Lazy;
 
 #[derive(Debug, Clone)]
 pub enum Token {
     Num(u8),
+    Plus,
+    Minus,
+    Mul,
+    Div,
 }
 
-static NUMBERS: Lazy<String> = Lazy::new(|| format!("⓪①②③④⑤⑥⑦⑧⑨⑩"));
+pub static NUMBERS: Lazy<String> = Lazy::new(|| format!("⓪①②③④⑤⑥⑦⑧⑨⑩"));
 
-pub fn lex(code: String) -> Result<Vec<Token>> {
+pub fn lex(code: &str) -> Result<Vec<Token>> {
     let mut tokens = vec![];
     for ch in code.chars() {
         match ch {
-            // 数字のlexについてはchar_indices()とか使えそうで使えなかったので、愚直にやることにした
-            '⓪' => {
-                tokens.push(Token::Num(0));
+            '⓪' | '①' | '②' | '③' | '④' | '⑤' | '⑥' | '⑦' | '⑧' | '⑨' | '⑩' => {
+                for (i, x) in (*NUMBERS).chars().enumerate() {
+                    if ch == x {
+                        tokens.push(Token::Num(i as u8));
+                        break;
+                    }
+                }
             }
-            '①' => {
-                tokens.push(Token::Num(1));
+            '＋' => {
+                tokens.push(Token::Plus);
             }
-            '②' => {
-                tokens.push(Token::Num(2));
+            '－' => {
+                tokens.push(Token::Minus);
             }
-            '③' => {
-                tokens.push(Token::Num(3));
+            '×' => {
+                tokens.push(Token::Mul);
             }
-            '④' => {
-                tokens.push(Token::Num(4));
-            }
-            '⑤' => {
-                tokens.push(Token::Num(5));
-            }
-            '⑥' => {
-                tokens.push(Token::Num(6));
-            }
-            '⑦' => {
-                tokens.push(Token::Num(7));
-            }
-            '⑧' => {
-                tokens.push(Token::Num(8));
-            }
-            '⑨' => {
-                tokens.push(Token::Num(9));
-            }
-            '⑩' => {
-                tokens.push(Token::Num(10));
+            '÷' => {
+                tokens.push(Token::Div);
             }
             _ => (),
         }
