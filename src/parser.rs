@@ -1,16 +1,9 @@
-use std::array::IntoIter;
 use std::iter::Peekable;
 
 use anyhow::Result;
 
 use crate::ast::*;
 use crate::token::{self, Token};
-
-#[derive(Debug)]
-pub struct Parser {
-    tokens: Vec<Token>,
-    cursor: usize,
-}
 
 fn err_msg(msg: &str) -> String {
     format!("parse error: {}", msg)
@@ -27,15 +20,6 @@ macro_rules! unexpected_token {
         let msg = format!("parse error: unexpected token\ntoken: {:?}", $lexpr);
         anyhow::anyhow!(msg)
     }};
-}
-
-impl Parser {
-    pub fn new(tokens: Vec<Token>) -> Self {
-        Self {
-            tokens: tokens,
-            cursor: 0,
-        }
-    }
 }
 
 pub fn parse(tokens: Vec<Token>) -> Result<Ast> {
