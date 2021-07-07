@@ -1,19 +1,12 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Ast {
-    Stmt { stmt: Stmt, expr: Expr },
-    Expr(Expr),
-}
-
-impl Ast {
-    pub fn stmt(stmt: Stmt, expr: Expr) -> Self {
-        Self::Stmt { stmt, expr }
-    }
+    Stmts(Vec<Stmt>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Stmt {
-    NumOut,
-    CharOut,
+    NumOut(Expr),
+    CharOut(Expr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
