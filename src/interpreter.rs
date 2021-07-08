@@ -7,6 +7,21 @@ use anyhow::{Context, Result};
 
 use crate::{ast::*, parser, token};
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RetVal {
+    Int(i64),
+    Void,
+}
+
+impl RetVal {
+    pub fn to_i(&self) -> Result<i64> {
+        match self {
+            Self::Int(i) => Ok(*i),
+            Self::Void => Err(anyhow::anyhow!("the retrun value type is void.")),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Interpreter {
     // Bolicの変数はすべてグローバル変数
@@ -25,6 +40,10 @@ impl Interpreter {
         let ast = parser::parse(tokens)?;
         self.eval(&ast)?;
         Ok(())
+    }
+
+    fn dbg_table(&self) {
+        println!("table: {:?}", &self.sym_table);
     }
 
     fn eval(&mut self, ast: &Ast) -> Result<()> {
@@ -49,6 +68,10 @@ impl Interpreter {
         match stmt {
             Stmt::Expr(expr) => {
                 let res = self.e_expr(expr)?;
+                Ok(res)
+            }
+            Stmt::While { .. } => {
+                let res = self.e_while(stmt)?;
                 Ok(res)
             }
             Stmt::NumOut(expr) => {
@@ -111,6 +134,30 @@ impl Interpreter {
                         self.e_stmts(&Ast::Stmts(*conseq))
                     }
                 }
+            }
+        }
+    }
+
+    fn e_while(&mut self, wblock: &Stmt) -> Result<RetVal> {
+        match wblock {
+            Stmt::While { cond, body } => {
+                loop {
+                    // 0: false, other num: true
+                    let cond = self.e_expr(cond)?.to_i()?;
+                    if cond == 0 {
+                        break;
+                    }
+                    // todo: lifetime
+                    self.e_stmts(&Ast::Stmts(body.clone()))?;
+                }
+                Ok(RetVal::Void)
+            }
+            _ => {
+                let msg = format!(
+                    "interpreter error: the stmt is not while. actual: {:?}",
+                    wblock
+                );
+                Err(anyhow::anyhow!(msg))
             }
         }
     }

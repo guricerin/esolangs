@@ -1,23 +1,6 @@
-use anyhow::Result;
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Ast {
     Stmts(Stmts),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum RetVal {
-    Int(i64),
-    Void,
-}
-
-impl RetVal {
-    pub fn to_i(&self) -> Result<i64> {
-        match self {
-            Self::Int(i) => Ok(*i),
-            Self::Void => Err(anyhow::anyhow!("the retrun value type is void.")),
-        }
-    }
 }
 
 pub type Stmts = Vec<Stmt>;
@@ -25,6 +8,7 @@ pub type Stmts = Vec<Stmt>;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Stmt {
     Expr(Expr),
+    While { cond: Expr, body: Stmts },
     NumOut(Expr),
     CharOut(Expr),
 }

@@ -15,7 +15,10 @@ pub enum Token {
     If,
     Then,
     Else,
-    End,
+    IfEnd,
+    While,
+    Do,
+    WhileEnd,
 }
 
 // 10はLFのASCIIコード
@@ -36,7 +39,7 @@ pub fn lex(code: &str) -> Result<Vec<Token>> {
             '＋' => {
                 tokens.push(Token::Plus);
             }
-            '－' => {
+            '−' => {
                 tokens.push(Token::Minus);
             }
             '×' => {
@@ -69,7 +72,16 @@ pub fn lex(code: &str) -> Result<Vec<Token>> {
                 tokens.push(Token::Else);
             }
             '☻' => {
-                tokens.push(Token::End);
+                tokens.push(Token::IfEnd);
+            }
+            '♺' => {
+                tokens.push(Token::While);
+            }
+            '☞' => {
+                tokens.push(Token::Do);
+            }
+            '♘' => {
+                tokens.push(Token::WhileEnd);
             }
             _ => (),
         }
@@ -94,7 +106,7 @@ mod tests {
 
     #[test]
     fn op() {
-        let code = "＋－×÷";
+        let code = "＋−×÷";
         let actual = lex(code).unwrap();
         let expect = vec![Token::Plus, Token::Minus, Token::Mul, Token::Div];
         assert_eq!(expect, actual);
@@ -138,10 +150,24 @@ mod tests {
     }
 
     #[test]
+    fn assign3() {
+        let code = "✪☜ ✪−①";
+        let actual = lex(code).unwrap();
+        let expect = vec![
+            Token::Symbol('✪'),
+            Token::Assign,
+            Token::Symbol('✪'),
+            Token::Minus,
+            Token::Num(1),
+        ];
+        assert_eq!(expect, actual);
+    }
+
+    #[test]
     fn if_then_else_end() {
         let code = "✈☺☹☻";
         let actual = lex(code).unwrap();
-        let expect = vec![Token::If, Token::Then, Token::Else, Token::End];
+        let expect = vec![Token::If, Token::Then, Token::Else, Token::IfEnd];
         assert_eq!(expect, actual);
     }
 }
