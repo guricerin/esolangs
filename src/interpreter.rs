@@ -92,6 +92,9 @@ impl Interpreter {
                     BinOp::Div => Ok(l / r),
                 }
             }
+            _ => {
+                todo!();
+            }
         }
     }
 }

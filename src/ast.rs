@@ -1,7 +1,9 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Ast {
-    Stmts(Vec<Stmt>),
+    Stmts(Stmts),
 }
+
+pub type Stmts = Vec<Stmt>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Stmt {
@@ -18,6 +20,11 @@ pub enum Expr {
         l: Box<Expr>,
         r: Box<Expr>,
     },
+    If {
+        cond: Box<Expr>,
+        conseq: Box<Stmts>,
+        alt: Box<Stmts>,
+    },
 }
 
 impl Expr {
@@ -31,6 +38,14 @@ impl Expr {
 
     pub fn int(i: i64) -> Self {
         Self::Var(Variable::Int(i))
+    }
+
+    pub fn if_expr(cond: Expr, conseq: Stmts, alt: Stmts) -> Self {
+        Self::If {
+            cond: Box::new(cond),
+            conseq: Box::new(conseq),
+            alt: Box::new(alt),
+        }
     }
 }
 

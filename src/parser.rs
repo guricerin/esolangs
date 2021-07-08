@@ -25,9 +25,9 @@ macro_rules! unexpected_token {
 pub fn parse(tokens: Vec<Token>) -> Result<Ast> {
     let mut tokens = tokens.clone().into_iter().peekable();
     // println!("tokens: {:?}", &tokens);
-    let ast = p_stmts(&mut tokens)?;
+    let stmts = p_stmts(&mut tokens, None)?;
     match tokens.next() {
-        None => Ok(ast),
+        None => Ok(Ast::Stmts(stmts)),
         Some(tok) => {
             let msg = format!("redundant token: {:?}", &tok);
             Err(anyhow::anyhow!(err_msg(&msg)))
@@ -35,20 +35,35 @@ pub fn parse(tokens: Vec<Token>) -> Result<Ast> {
     }
 }
 
-fn p_stmts<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<Ast>
+fn p_stmts<Tokens>(tokens: &mut Peekable<Tokens>, terminator: Option<Token>) -> Result<Stmts>
 where
     Tokens: Iterator<Item = Token>,
 {
     let mut stmts = vec![];
-    loop {
-        match p_stmt(tokens) {
-            Ok(ast) => {
-                stmts.push(ast);
+    match terminator {
+        Some(term) => loop {
+            match consume(tokens, &term) {
+                Ok(_) => {
+                    break;
+                }
+                Err(_) => match p_stmt(tokens) {
+                    Ok(ast) => {
+                        stmts.push(ast);
+                    }
+                    Err(_) => break,
+                },
             }
-            Err(_) => break,
-        }
+        },
+        None => loop {
+            match p_stmt(tokens) {
+                Ok(ast) => {
+                    stmts.push(ast);
+                }
+                Err(_) => break,
+            }
+        },
     }
-    Ok(Ast::Stmts(stmts))
+    Ok(stmts)
 }
 
 fn p_stmt<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<Stmt>
@@ -80,7 +95,17 @@ where
             let stmt = Stmt::CharOut(expr);
             Ok(stmt)
         }
-        _ => Err(unexpected_token!(tok)),
+        // Token::If => {
+        //     let expr = p_if(tokens)?;
+        //     let stmt = Stmt::Expr(expr);
+        //     Ok(stmt)
+        // }
+        // _ => Err(unexpected_token!(tok)),
+        _ => {
+            let expr = p_expr(tokens)?;
+            let stmt = Stmt::Expr(expr);
+            Ok(stmt)
+        }
     }
 }
 
@@ -88,7 +113,16 @@ fn p_expr<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<Expr>
 where
     Tokens: Iterator<Item = Token>,
 {
-    p_additive(tokens)
+    match tokens.peek() {
+        None => return Err(eof!()),
+        _ => (),
+    };
+
+    let tok = tokens.peek().unwrap().clone();
+    match tok {
+        Token::If => p_if(tokens),
+        _ => p_additive(tokens),
+    }
 }
 
 fn p_additive<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<Expr>
@@ -160,7 +194,7 @@ where
     match tok {
         Token::Symbol(var) => {
             tokens.next();
-            match p_assgin(tokens) {
+            match consume(tokens, &Token::Assign) {
                 Ok(_) => {
                     let expr = p_expr(tokens)?;
                     let res = Variable::assign(var, expr);
@@ -177,29 +211,17 @@ where
     }
 }
 
-fn p_assgin<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<()>
+fn p_if<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<Expr>
 where
     Tokens: Iterator<Item = Token>,
 {
-    // match tokens.peek() {
-    //     None => return Err(eof!()),
-    //     _ => (),
-    // };
-
-    // let tok = tokens.peek().unwrap();
-    // match tok {
-    //     Token::Assign => {
-    //         tokens.next();
-    //         Ok(())
-    //     }
-    //     _ => Err(unexpected_token!(tok)),
-    // }
-    let _ = tokens.peek().ok_or(eof!()).and_then(|tok| match tok {
-        Token::Assign => Ok(()),
-        _ => Err(unexpected_token!(tok)),
-    })?;
-    tokens.next();
-    Ok(())
+    consume(tokens, &Token::If)?;
+    let cond = p_expr(tokens)?;
+    consume(tokens, &Token::Then)?;
+    let conseq = p_stmts(tokens, Some(Token::Else))?;
+    let alt = p_stmts(tokens, Some(Token::End))?;
+    let res = Expr::if_expr(cond, conseq, alt);
+    Ok(res)
 }
 
 fn p_number<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<Variable>
@@ -216,6 +238,22 @@ where
 
     tokens.next();
     Ok(int)
+}
+
+fn consume<Tokens>(tokens: &mut Peekable<Tokens>, expect: &Token) -> Result<()>
+where
+    Tokens: Iterator<Item = Token>,
+{
+    tokens.peek().ok_or(eof!()).and_then(|tok| {
+        if tok == expect {
+            Ok(())
+        } else {
+            Err(unexpected_token!(tok))
+        }
+    })?;
+
+    tokens.next();
+    Ok(())
 }
 
 #[cfg(test)]
@@ -275,22 +313,6 @@ mod tests {
     }
 
     #[test]
-    fn mul3() {
-        let code = "①×②×③×④";
-        let tokens = token::lex(code).unwrap();
-        eprintln!("{:?}", &tokens);
-        let mut tokens = tokens.into_iter().peekable();
-        let expr = parser::p_expr(&mut tokens).unwrap();
-
-        let expect = Expr::binop(BinOp::Mul, Expr::int(1), Expr::int(2));
-        let expect = Expr::binop(BinOp::Mul, expect, Expr::int(3));
-        let expect = Expr::binop(BinOp::Mul, expect, Expr::int(4));
-        eprintln!("{:?}", &expect);
-
-        assert_eq!(expect, expr);
-    }
-
-    #[test]
     fn numout() {
         let code = "✍①×②＋③×④";
         let tokens = token::lex(code).unwrap();
@@ -314,6 +336,23 @@ mod tests {
 
         let expect = Variable::assign('✩', Expr::int(4));
         let expect = Ast::Stmts(vec![Stmt::Expr(Expr::Var(expect))]);
+        assert_eq!(expect, ast);
+    }
+
+    #[test]
+    fn if_expr() {
+        let code = "✈①☺②☹③☻";
+        let tokens = token::lex(code).unwrap();
+        let ast = parser::parse(tokens).unwrap();
+
+        let cond = Expr::int(1);
+        let conseq = Expr::int(2);
+        let alt = Expr::int(3);
+        let expect = Ast::Stmts(vec![Stmt::Expr(Expr::if_expr(
+            cond,
+            vec![Stmt::Expr(conseq)],
+            vec![Stmt::Expr(alt)],
+        ))]);
         assert_eq!(expect, ast);
     }
 }

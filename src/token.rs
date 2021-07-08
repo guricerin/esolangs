@@ -12,6 +12,10 @@ pub enum Token {
     CharOut,
     Symbol(char),
     Assign,
+    If,
+    Then,
+    Else,
+    End,
 }
 
 // 10はLFのASCIIコード
@@ -54,6 +58,18 @@ pub fn lex(code: &str) -> Result<Vec<Token>> {
             }
             '☜' => {
                 tokens.push(Token::Assign);
+            }
+            '✈' => {
+                tokens.push(Token::If);
+            }
+            '☺' => {
+                tokens.push(Token::Then);
+            }
+            '☹' => {
+                tokens.push(Token::Else);
+            }
+            '☻' => {
+                tokens.push(Token::End);
             }
             _ => (),
         }
@@ -118,6 +134,14 @@ mod tests {
         let code = "✩ ☜ ✲";
         let actual = lex(code).unwrap();
         let expect = vec![Token::Symbol('✩'), Token::Assign, Token::Symbol('✲')];
+        assert_eq!(expect, actual);
+    }
+
+    #[test]
+    fn if_then_else_end() {
+        let code = "✈☺☹☻";
+        let actual = lex(code).unwrap();
+        let expect = vec![Token::If, Token::Then, Token::Else, Token::End];
         assert_eq!(expect, actual);
     }
 }
