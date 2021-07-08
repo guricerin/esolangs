@@ -25,7 +25,7 @@ macro_rules! unexpected_token {
 pub fn parse(tokens: Vec<Token>) -> Result<Ast> {
     let mut tokens = tokens.clone().into_iter().peekable();
     // println!("tokens: {:?}", &tokens);
-    let stmts = p_stmts(&mut tokens, None)?;
+    let stmts = p_stmts(&mut tokens, vec![])?;
     match tokens.next() {
         None => Ok(Ast::Stmts(stmts)),
         Some(tok) => {
@@ -35,34 +35,32 @@ pub fn parse(tokens: Vec<Token>) -> Result<Ast> {
     }
 }
 
-fn p_stmts<Tokens>(tokens: &mut Peekable<Tokens>, terminator: Option<Token>) -> Result<Stmts>
+fn p_stmts<Tokens>(tokens: &mut Peekable<Tokens>, terminators: Vec<Token>) -> Result<Stmts>
 where
     Tokens: Iterator<Item = Token>,
 {
     let mut stmts = vec![];
-    match terminator {
-        Some(term) => loop {
-            match consume(tokens, &term) {
-                Ok(_) => {
+
+    loop {
+        if tokens.peek().is_none() {
+            break;
+        }
+
+        let tok = tokens.peek().unwrap().clone();
+        if terminators.contains(&tok) {
+            break;
+        } else {
+            match p_stmt(tokens) {
+                Ok(stmt) => {
+                    stmts.push(stmt);
+                }
+                Err(_) => {
                     break;
                 }
-                Err(_) => match p_stmt(tokens) {
-                    Ok(ast) => {
-                        stmts.push(ast);
-                    }
-                    Err(_) => break,
-                },
             }
-        },
-        None => loop {
-            match p_stmt(tokens) {
-                Ok(ast) => {
-                    stmts.push(ast);
-                }
-                Err(_) => break,
-            }
-        },
+        }
     }
+
     Ok(stmts)
 }
 
@@ -95,12 +93,6 @@ where
             let stmt = Stmt::CharOut(expr);
             Ok(stmt)
         }
-        // Token::If => {
-        //     let expr = p_if(tokens)?;
-        //     let stmt = Stmt::Expr(expr);
-        //     Ok(stmt)
-        // }
-        // _ => Err(unexpected_token!(tok)),
         _ => {
             let expr = p_expr(tokens)?;
             let stmt = Stmt::Expr(expr);
@@ -218,10 +210,20 @@ where
     consume(tokens, &Token::If)?;
     let cond = p_expr(tokens)?;
     consume(tokens, &Token::Then)?;
-    let conseq = p_stmts(tokens, Some(Token::Else))?;
-    let alt = p_stmts(tokens, Some(Token::End))?;
-    let res = Expr::if_expr(cond, conseq, alt);
-    Ok(res)
+    let conseq = p_stmts(tokens, vec![Token::Else, Token::End])?;
+
+    if consume(tokens, &Token::Else).is_ok() {
+        let alt = p_stmts(tokens, vec![Token::End])?;
+        tokens.next();
+        let res = Expr::if_alt(cond, conseq, alt);
+        Ok(res)
+    } else if consume(tokens, &Token::End).is_ok() {
+        let res = Expr::if_without_alt(cond, conseq);
+        Ok(res)
+    } else {
+        let msg = format!("the if block has not end token.");
+        Err(anyhow::anyhow!(msg))
+    }
 }
 
 fn p_number<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<Variable>
@@ -348,10 +350,25 @@ mod tests {
         let cond = Expr::int(1);
         let conseq = Expr::int(2);
         let alt = Expr::int(3);
-        let expect = Ast::Stmts(vec![Stmt::Expr(Expr::if_expr(
+        let expect = Ast::Stmts(vec![Stmt::Expr(Expr::if_alt(
             cond,
             vec![Stmt::Expr(conseq)],
             vec![Stmt::Expr(alt)],
+        ))]);
+        assert_eq!(expect, ast);
+    }
+
+    #[test]
+    fn if_expr2() {
+        let code = "✈①☺②☻";
+        let tokens = token::lex(code).unwrap();
+        let ast = parser::parse(tokens).unwrap();
+
+        let cond = Expr::int(1);
+        let conseq = Expr::int(2);
+        let expect = Ast::Stmts(vec![Stmt::Expr(Expr::if_without_alt(
+            cond,
+            vec![Stmt::Expr(conseq)],
         ))]);
         assert_eq!(expect, ast);
     }

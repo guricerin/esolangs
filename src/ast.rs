@@ -1,6 +1,23 @@
+use anyhow::Result;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Ast {
     Stmts(Stmts),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RetVal {
+    Int(i64),
+    Void,
+}
+
+impl RetVal {
+    pub fn to_i(&self) -> Result<i64> {
+        match self {
+            Self::Int(i) => Ok(*i),
+            Self::Void => Err(anyhow::anyhow!("the retrun value type is void.")),
+        }
+    }
 }
 
 pub type Stmts = Vec<Stmt>;
@@ -23,7 +40,7 @@ pub enum Expr {
     If {
         cond: Box<Expr>,
         conseq: Box<Stmts>,
-        alt: Box<Stmts>,
+        alt: Option<Box<Stmts>>,
     },
 }
 
@@ -40,11 +57,19 @@ impl Expr {
         Self::Var(Variable::Int(i))
     }
 
-    pub fn if_expr(cond: Expr, conseq: Stmts, alt: Stmts) -> Self {
+    pub fn if_alt(cond: Expr, conseq: Stmts, alt: Stmts) -> Self {
         Self::If {
             cond: Box::new(cond),
             conseq: Box::new(conseq),
-            alt: Box::new(alt),
+            alt: Some(Box::new(alt)),
+        }
+    }
+
+    pub fn if_without_alt(cond: Expr, conseq: Stmts) -> Self {
+        Self::If {
+            cond: Box::new(cond),
+            conseq: Box::new(conseq),
+            alt: None,
         }
     }
 }

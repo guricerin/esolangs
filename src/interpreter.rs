@@ -28,47 +28,50 @@ impl Interpreter {
     }
 
     fn eval(&mut self, ast: &Ast) -> Result<()> {
-        match ast {
-            Ast::Stmts(stmts) => {
-                for stmt in stmts.iter() {
-                    self.e_stmt(stmt)?;
-                }
-            }
-        };
+        self.e_stmts(&ast)?;
         Ok(())
     }
 
-    fn e_stmt(&mut self, stmt: &Stmt) -> Result<()> {
+    fn e_stmts(&mut self, ast: &Ast) -> Result<RetVal> {
+        // 最後の文のリターン値を全体のリターン値とする
+        let mut res = RetVal::Void;
+        match ast {
+            Ast::Stmts(stmts) => {
+                for stmt in stmts.iter() {
+                    res = self.e_stmt(stmt)?;
+                }
+            }
+        };
+        Ok(res)
+    }
+
+    fn e_stmt(&mut self, stmt: &Stmt) -> Result<RetVal> {
         match stmt {
-            Stmt::Expr(Expr::Var(Variable::Assign { var, expr })) => {
-                let value = self.e_expr(expr)?;
-                // 名前が重複する変数の場合は上書き
-                self.sym_table.insert(*var, value);
+            Stmt::Expr(expr) => {
+                let res = self.e_expr(expr)?;
+                Ok(res)
             }
             Stmt::NumOut(expr) => {
-                let x = self.e_expr(expr)?.to_string();
+                let x = self.e_expr(expr)?.to_i()?.to_string();
                 let mut writer = BufWriter::new(io::stdout());
                 writer.write(x.as_bytes())?;
                 writer.flush()?;
+                Ok(RetVal::Void)
             }
             Stmt::CharOut(expr) => {
-                let x = self.e_expr(expr)?;
+                let x = self.e_expr(expr)?.to_i()?;
                 let mut writer = BufWriter::new(io::stdout());
                 // ASCIIコードとみなす
                 writer.write(&[x as u8])?;
                 writer.flush()?;
+                Ok(RetVal::Void)
             }
-            _ => {
-                let msg = format!("interpreter error: unexpected statement: {:?}", stmt);
-                return Err(anyhow::anyhow!(msg));
-            }
-        };
-        Ok(())
+        }
     }
 
-    fn e_expr(&mut self, ast: &Expr) -> Result<i64> {
-        match ast {
-            Expr::Var(Variable::Int(i)) => Ok(*i),
+    fn e_expr(&mut self, expr: &Expr) -> Result<RetVal> {
+        match expr {
+            Expr::Var(Variable::Int(i)) => Ok(RetVal::Int(*i)),
             Expr::Var(Variable::Var(var)) => self
                 .sym_table
                 .get(var)
@@ -76,24 +79,38 @@ impl Interpreter {
                     let msg = format!("interpreter error: <{}> is undelared variable.", var);
                     anyhow::anyhow!(msg)
                 })
-                .and_then(|value| Ok(*value)),
+                .and_then(|value| Ok(RetVal::Int(*value))),
             Expr::Var(Variable::Assign { var, expr }) => {
                 let value = self.e_expr(expr)?;
-                self.sym_table.insert(*var, value);
+                // 名前が重複する変数の場合は上書き
+                self.sym_table.insert(*var, value.to_i()?);
                 Ok(value)
             }
             Expr::BinOp { op, l, r } => {
-                let l = self.e_expr(l)?;
-                let r = self.e_expr(r)?;
+                let l = self.e_expr(l)?.to_i()?;
+                let r = self.e_expr(r)?.to_i()?;
                 match op {
-                    BinOp::Add => Ok(l + r),
-                    BinOp::Sub => Ok(l - r),
-                    BinOp::Mul => Ok(l * r),
-                    BinOp::Div => Ok(l / r),
+                    BinOp::Add => Ok(RetVal::Int(l + r)),
+                    BinOp::Sub => Ok(RetVal::Int(l - r)),
+                    BinOp::Mul => Ok(RetVal::Int(l * r)),
+                    BinOp::Div => Ok(RetVal::Int(l / r)),
                 }
             }
-            _ => {
-                todo!();
+            Expr::If { cond, conseq, alt } => {
+                // 0: false, other num: true
+                let cond = self.e_expr(cond)?.to_i()?;
+
+                match (cond, alt) {
+                    (0, Some(alt)) => {
+                        let alt = alt.clone();
+                        self.e_stmts(&Ast::Stmts(*alt))
+                    }
+                    (0, None) => Ok(RetVal::Void),
+                    (_, _) => {
+                        let conseq = conseq.clone();
+                        self.e_stmts(&Ast::Stmts(*conseq))
+                    }
+                }
             }
         }
     }
