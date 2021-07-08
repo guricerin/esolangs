@@ -10,8 +10,11 @@ pub enum Token {
     Div,
     NumOut,
     CharOut,
+    Symbol(char),
+    Assign,
 }
 
+// 10はLFのASCIIコード
 pub static NUMBERS: Lazy<String> = Lazy::new(|| format!("⓪①②③④⑤⑥⑦⑧⑨⑩"));
 
 pub fn lex(code: &str) -> Result<Vec<Token>> {
@@ -45,6 +48,12 @@ pub fn lex(code: &str) -> Result<Vec<Token>> {
             // 音符
             '\u{266a}' => {
                 tokens.push(Token::CharOut);
+            }
+            '✪' | '✷' | '✲' | '✩' => {
+                tokens.push(Token::Symbol(ch));
+            }
+            '☜' => {
+                tokens.push(Token::Assign);
             }
             _ => (),
         }
@@ -80,6 +89,35 @@ mod tests {
         let code = "✍♪";
         let actual = lex(code).unwrap();
         let expect = vec![Token::NumOut, Token::CharOut];
+        assert_eq!(expect, actual);
+    }
+
+    #[test]
+    fn var() {
+        let code = "✪  ✷  ✲ | ✩";
+        let actual = lex(code).unwrap();
+        let expect = vec![
+            Token::Symbol('✪'),
+            Token::Symbol('✷'),
+            Token::Symbol('✲'),
+            Token::Symbol('✩'),
+        ];
+        assert_eq!(expect, actual);
+    }
+
+    #[test]
+    fn assign() {
+        let code = "✩ ☜ ④";
+        let actual = lex(code).unwrap();
+        let expect = vec![Token::Symbol('✩'), Token::Assign, Token::Num(4)];
+        assert_eq!(expect, actual);
+    }
+
+    #[test]
+    fn assign2() {
+        let code = "✩ ☜ ✲";
+        let actual = lex(code).unwrap();
+        let expect = vec![Token::Symbol('✩'), Token::Assign, Token::Symbol('✲')];
         assert_eq!(expect, actual);
     }
 }

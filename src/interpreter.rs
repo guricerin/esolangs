@@ -1,21 +1,23 @@
-use std::io::{self, BufWriter, Write};
+use std::{
+    collections::HashMap,
+    io::{self, BufWriter, Write},
+};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 use crate::{ast::*, parser, token};
 
 #[derive(Debug)]
 pub struct Interpreter {
-    ret_code: i64,
+    // Bolicの変数はすべてグローバル変数
+    sym_table: HashMap<char, i64>,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
-        Self { ret_code: 0 }
-    }
-
-    pub fn ret_code(&self) -> i64 {
-        self.ret_code
+        Self {
+            sym_table: HashMap::new(),
+        }
     }
 
     pub fn run(&mut self, code: &str) -> Result<()> {
@@ -36,8 +38,13 @@ impl Interpreter {
         Ok(())
     }
 
-    fn e_stmt(&self, stmt: &Stmt) -> Result<()> {
+    fn e_stmt(&mut self, stmt: &Stmt) -> Result<()> {
         match stmt {
+            Stmt::Expr(Expr::Var(Variable::Assign { var, expr })) => {
+                let value = self.e_expr(expr)?;
+                // 名前が重複する変数の場合は上書き
+                self.sym_table.insert(*var, value);
+            }
             Stmt::NumOut(expr) => {
                 let x = self.e_expr(expr)?.to_string();
                 let mut writer = BufWriter::new(io::stdout());
@@ -51,38 +58,41 @@ impl Interpreter {
                 writer.write(&[x as u8])?;
                 writer.flush()?;
             }
+            _ => {
+                let msg = format!("interpreter error: unexpected statement: {:?}", stmt);
+                return Err(anyhow::anyhow!(msg));
+            }
         };
         Ok(())
     }
 
-    fn e_expr(&self, ast: &Expr) -> Result<i64> {
-        let res = match ast {
-            Expr::Int(i) => *i,
-            Expr::BinOp { op, l, r } => match op {
-                BinOp::Add => {
-                    let l = self.e_expr(l)?;
-                    let r = self.e_expr(r)?;
-                    l + r
+    fn e_expr(&mut self, ast: &Expr) -> Result<i64> {
+        match ast {
+            Expr::Var(Variable::Int(i)) => Ok(*i),
+            Expr::Var(Variable::Var(var)) => self
+                .sym_table
+                .get(var)
+                .with_context(|| {
+                    let msg = format!("interpreter error: <{}> is undelared variable.", var);
+                    anyhow::anyhow!(msg)
+                })
+                .and_then(|value| Ok(*value)),
+            Expr::Var(Variable::Assign { var, expr }) => {
+                let value = self.e_expr(expr)?;
+                self.sym_table.insert(*var, value);
+                Ok(value)
+            }
+            Expr::BinOp { op, l, r } => {
+                let l = self.e_expr(l)?;
+                let r = self.e_expr(r)?;
+                match op {
+                    BinOp::Add => Ok(l + r),
+                    BinOp::Sub => Ok(l - r),
+                    BinOp::Mul => Ok(l * r),
+                    BinOp::Div => Ok(l / r),
                 }
-                BinOp::Sub => {
-                    let l = self.e_expr(l)?;
-                    let r = self.e_expr(r)?;
-                    l - r
-                }
-                BinOp::Mul => {
-                    let l = self.e_expr(l)?;
-                    let r = self.e_expr(r)?;
-                    l * r
-                }
-                BinOp::Div => {
-                    let l = self.e_expr(l)?;
-                    let r = self.e_expr(r)?;
-                    l / r
-                }
-            },
-        };
-
-        Ok(res)
+            }
+        }
     }
 }
 
@@ -91,11 +101,22 @@ mod tests {
     use super::Interpreter;
 
     #[test]
-    fn add() {
-        let code = "①＋②";
+    fn assgin() {
+        let code = "✩ ☜ ①＋②";
         let mut interpreter = Interpreter::new();
         interpreter.run(code).unwrap();
+        let actual = interpreter.sym_table.get(&'✩').unwrap();
         let expect = 3;
-        assert_eq!(expect, interpreter.ret_code);
+        assert_eq!(expect, *actual);
+    }
+
+    #[test]
+    fn assgin2() {
+        let code = "✪ ☜ ✩ ☜ ① ＋ ②";
+        let mut interpreter = Interpreter::new();
+        interpreter.run(code).unwrap();
+        let actual = interpreter.sym_table.get(&'✪').unwrap();
+        let expect = 3;
+        assert_eq!(expect, *actual);
     }
 }

@@ -5,13 +5,14 @@ pub enum Ast {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Stmt {
+    Expr(Expr),
     NumOut(Expr),
     CharOut(Expr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
-    Int(i64),
+    Var(Variable),
     BinOp {
         op: BinOp,
         l: Box<Expr>,
@@ -27,6 +28,10 @@ impl Expr {
             r: Box::new(r),
         }
     }
+
+    pub fn int(i: i64) -> Self {
+        Self::Var(Variable::Int(i))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,4 +40,20 @@ pub enum BinOp {
     Sub,
     Mul,
     Div,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Variable {
+    Assign { var: char, expr: Box<Expr> },
+    Var(char),
+    Int(i64),
+}
+
+impl Variable {
+    pub fn assign(var: char, expr: Expr) -> Self {
+        Self::Assign {
+            var: var,
+            expr: Box::new(expr),
+        }
+    }
 }
