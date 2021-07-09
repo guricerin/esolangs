@@ -3,7 +3,7 @@ use std::iter::Peekable;
 use anyhow::Result;
 
 use crate::ast::*;
-use crate::token::{self, Token};
+use crate::token::Token;
 
 fn err_msg(msg: &str) -> String {
     format!("parse error: {}", msg)
@@ -23,7 +23,7 @@ macro_rules! unexpected_token {
 }
 
 pub fn parse(tokens: Vec<Token>) -> Result<Ast> {
-    let mut tokens = tokens.clone().into_iter().peekable();
+    let mut tokens = tokens.into_iter().peekable();
     let stmts = p_stmts(&mut tokens, vec![])?;
     match tokens.next() {
         None => Ok(Ast::Stmts(stmts)),
@@ -445,6 +445,23 @@ mod tests {
             Expr::binop(BinOp::Div, Expr::Var(Variable::Var('✪')), Expr::int(1)),
         );
         let expect = Ast::Stmts(vec![Stmt::Expr(Expr::Var(expect))]);
+        assert_eq!(expect, ast);
+    }
+
+    #[test]
+    fn while_stmt() {
+        let code = "♺ ✪ ☞ ✪☜ ✪−① ♘";
+        let tokens = token::lex(code).unwrap();
+        let ast = parser::parse(tokens).unwrap();
+
+        let cond = Expr::Var(Variable::Var('✪'));
+        let body = Expr::binop(BinOp::Sub, cond.clone(), Expr::int(1));
+        let body = Expr::Var(Variable::assign('✪', body));
+        let body = vec![Stmt::Expr(body)];
+        let expect = Ast::Stmts(vec![Stmt::While {
+            cond: cond,
+            body: body,
+        }]);
         assert_eq!(expect, ast);
     }
 }

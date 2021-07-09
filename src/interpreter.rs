@@ -42,10 +42,6 @@ impl Interpreter {
         Ok(())
     }
 
-    fn dbg_table(&self) {
-        println!("table: {:?}", &self.sym_table);
-    }
-
     fn eval(&mut self, ast: &Ast) -> Result<()> {
         self.e_stmts(&ast)?;
         Ok(())
@@ -125,12 +121,12 @@ impl Interpreter {
 
                 match (cond, alt) {
                     (0, Some(alt)) => {
-                        let alt = alt.clone();
+                        let alt = alt.to_owned();
                         self.e_stmts(&Ast::Stmts(*alt))
                     }
                     (0, None) => Ok(RetVal::Void),
                     (_, _) => {
-                        let conseq = conseq.clone();
+                        let conseq = conseq.to_owned();
                         self.e_stmts(&Ast::Stmts(*conseq))
                     }
                 }
@@ -147,8 +143,7 @@ impl Interpreter {
                     if cond == 0 {
                         break;
                     }
-                    // todo: lifetime
-                    self.e_stmts(&Ast::Stmts(body.clone()))?;
+                    self.e_stmts(&Ast::Stmts(body.to_owned()))?;
                 }
                 Ok(RetVal::Void)
             }
